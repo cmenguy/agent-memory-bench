@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-03-14T19:26:30.119235",
+  "leaderboard": [
+    {
+      "adapter": "simple-in-memory",
+      "task": "temporal-reasoning",
+      "recall@5": 1.0,
+      "mrr": 0.9,
+      "latency_ms": 0.0,
+      "store_latency_ms": 0.0,
+      "samples": 5,
+      "success_rate": 1.0
+    },
+    {
+      "adapter": "simple-in-memory",
+      "task": "contradiction-detection",
+      "recall@5": 1.0,
+      "mrr": 0.5,
+      "latency_ms": 0.0,
+      "store_latency_ms": 0.0,
+      "samples": 5,
+      "success_rate": 1.0
+    },
+    {
+      "adapter": "simple-in-memory",
+      "task": "fact-recall",
+      "recall@5": 1.0,
+      "mrr": 1.0,
+      "latency_ms": 0.01,
+      "store_latency_ms": 0.0,
+      "samples": 5,
+      "success_rate": 1.0
+    }
+  ],
+  "metadata": {}
+}
