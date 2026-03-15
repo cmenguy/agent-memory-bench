@@ -1,5 +1,7 @@
 # agent-memory-bench
 
+[![CI](https://github.com/cmenguy/agent-memory-bench/actions/workflows/ci.yml/badge.svg)](https://github.com/cmenguy/agent-memory-bench/actions/workflows/ci.yml)
+
 A standardized benchmark suite for evaluating and comparing agent memory systems.
 
 ## Why
