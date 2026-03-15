@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import random
 import time
 from datetime import datetime, timedelta
 
-from agent_memory_bench.adapters.base import MemoryAdapter
+from agent_memory_bench.adapters.base import AsyncMemoryAdapter, MemoryAdapter
 from agent_memory_bench.models import (
     BenchmarkReport,
     MemoryEntry,
@@ -693,14 +694,18 @@ TASK_GENERATORS = {
 
 
 class BenchmarkRunner:
-    """Runs benchmark tasks against registered memory adapters."""
+    """Runs benchmark tasks against registered memory adapters.
+
+    Handles both synchronous (MemoryAdapter) and asynchronous
+    (AsyncMemoryAdapter) adapters transparently.
+    """
 
     def __init__(self, seed: int = 42, num_samples: int = 20):
-        self._adapters: dict[str, MemoryAdapter] = {}
+        self._adapters: dict[str, MemoryAdapter | AsyncMemoryAdapter] = {}
         self._seed = seed
         self._num_samples = num_samples
 
-    def register_adapter(self, name: str, adapter: MemoryAdapter) -> None:
+    def register_adapter(self, name: str, adapter: MemoryAdapter | AsyncMemoryAdapter) -> None:
         """Register a memory adapter for benchmarking."""
         self._adapters[name] = adapter
 
@@ -709,8 +714,20 @@ class BenchmarkRunner:
         """List of task types with implemented generators."""
         return list(TASK_GENERATORS.keys())
 
-    def run_task(self, adapter: MemoryAdapter, task: TaskDefinition) -> TaskResult:
-        """Run a single benchmark task against an adapter."""
+    def _is_async(self, adapter: MemoryAdapter | AsyncMemoryAdapter) -> bool:
+        """Check if an adapter is async."""
+        return isinstance(adapter, AsyncMemoryAdapter)
+
+    def run_task(
+        self, adapter: MemoryAdapter | AsyncMemoryAdapter, task: TaskDefinition
+    ) -> TaskResult:
+        """Run a single benchmark task against an adapter (sync or async)."""
+        if self._is_async(adapter):
+            return asyncio.run(self._run_task_async(adapter, task))
+        return self._run_task_sync(adapter, task)
+
+    def _run_task_sync(self, adapter: MemoryAdapter, task: TaskDefinition) -> TaskResult:
+        """Run a single benchmark task against a sync adapter."""
         sample_results: list[SampleResult] = []
 
         for sample in task.samples:
@@ -725,6 +742,60 @@ class BenchmarkRunner:
                 # Retrieve
                 retrieve_start = time.perf_counter()
                 retrieved = adapter.retrieve(sample.query)
+                retrieve_elapsed = (time.perf_counter() - retrieve_start) * 1000
+
+                retrieved_contents = [r.content for r in retrieved]
+                recall = compute_recall_at_k(
+                    retrieved_contents, sample.expected_retrieved_contents
+                )
+                mrr = compute_mrr(retrieved_contents, sample.expected_retrieved_contents)
+
+                sample_results.append(
+                    SampleResult(
+                        sample_id=sample.sample_id,
+                        retrieved=retrieved,
+                        recall_at_k=recall,
+                        mrr=mrr,
+                        latency_ms=retrieve_elapsed,
+                        store_latency_ms=store_elapsed,
+                    )
+                )
+            except Exception as e:
+                sample_results.append(
+                    SampleResult(
+                        sample_id=sample.sample_id,
+                        retrieved=[],
+                        success=False,
+                        error=str(e),
+                    )
+                )
+
+        result = TaskResult(
+            task_type=task.task_type,
+            adapter_name=adapter.name,
+            sample_results=sample_results,
+        )
+        result.compute_aggregates()
+        return result
+
+    async def _run_task_async(
+        self, adapter: AsyncMemoryAdapter, task: TaskDefinition
+    ) -> TaskResult:
+        """Run a single benchmark task against an async adapter."""
+        sample_results: list[SampleResult] = []
+
+        for sample in task.samples:
+            await adapter.clear()
+            try:
+                # Store memories
+                store_start = time.perf_counter()
+                for entry in sample.memories_to_store:
+                    await adapter.store(entry)
+                store_elapsed = (time.perf_counter() - store_start) * 1000
+
+                # Retrieve
+                retrieve_start = time.perf_counter()
+                retrieved = await adapter.retrieve(sample.query)
                 retrieve_elapsed = (time.perf_counter() - retrieve_start) * 1000
 
                 retrieved_contents = [r.content for r in retrieved]
@@ -779,7 +850,10 @@ class BenchmarkRunner:
 
         report = BenchmarkReport()
         for adapter_name, adapter in self._adapters.items():
-            adapter.setup()
+            if self._is_async(adapter):
+                asyncio.run(adapter.setup())
+            else:
+                adapter.setup()
             try:
                 for task_type in task_types:
                     generator = TASK_GENERATORS.get(task_type)
@@ -791,6 +865,9 @@ class BenchmarkRunner:
                     result = self.run_task(adapter, task_def)
                     report.task_results.append(result)
             finally:
-                adapter.teardown()
+                if self._is_async(adapter):
+                    asyncio.run(adapter.teardown())
+                else:
+                    adapter.teardown()
 
         return report
