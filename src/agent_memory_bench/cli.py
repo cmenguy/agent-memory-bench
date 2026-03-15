@@ -23,9 +23,15 @@ def _resolve_adapter(name: str):
         case "memos":
             from agent_memory_bench.adapters.memos import MemOSAdapter
             return MemOSAdapter()
+        case "openviking":
+            from agent_memory_bench.adapters.openviking import OpenVikingAdapter
+            return OpenVikingAdapter()
+        case "simplemem":
+            from agent_memory_bench.adapters.simplemem import SimpleMemAdapter
+            return SimpleMemAdapter()
         case _:
             raise click.BadParameter(
-                f"Unknown adapter: {name}. Available: mem0, memos"
+                f"Unknown adapter: {name}. Available: mem0, memos, openviking, simplemem"
             )
 
 
@@ -40,7 +46,7 @@ def main():
 
 @main.command()
 @click.option("--task", "-t", multiple=True, help=f"Task(s) to run. Available: {AVAILABLE_TASKS}")
-@click.option("--adapter", "-a", multiple=True, help="Adapter(s) to benchmark. Available: mem0, memos")
+@click.option("--adapter", "-a", multiple=True, help="Adapter(s) to benchmark. Available: mem0, memos, openviking, simplemem")
 @click.option("--all", "run_all", is_flag=True, help="Run all tasks against all adapters")
 @click.option("--num-samples", "-n", default=20, help="Number of samples per task")
 @click.option("--seed", "-s", default=42, help="Random seed for reproducibility")
@@ -50,7 +56,7 @@ def run(task, adapter, run_all, num_samples, seed, output):
     runner = BenchmarkRunner(seed=seed, num_samples=num_samples)
 
     # Register adapters
-    adapter_names = list(adapter) if adapter else (["mem0", "memos"] if run_all else [])
+    adapter_names = list(adapter) if adapter else (["mem0", "memos", "openviking", "simplemem"] if run_all else [])
     if not adapter_names:
         raise click.UsageError("Specify --adapter or use --all to benchmark all adapters.")
 
@@ -93,6 +99,8 @@ def adapters():
     adapter_info = [
         ("mem0", "Mem0 - Universal memory layer for AI agents", "pip install agent-memory-bench[mem0]"),
         ("memos", "MemOS - Memory operating system for LLMs", "pip install agent-memory-bench[memos]"),
+        ("openviking", "OpenViking - Agent-native context database by ByteDance", "pip install agent-memory-bench[openviking]"),
+        ("simplemem", "SimpleMem - Simple memory system for AI agents", "pip install agent-memory-bench[simplemem]"),
     ]
     for name, desc, install in adapter_info:
         click.echo(f"  {name}")
