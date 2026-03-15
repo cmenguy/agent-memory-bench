@@ -51,13 +51,30 @@ Summary by Adapter:
 ## MVP Roadmap
 
 - [ ] Define 5-7 core memory benchmark tasks with evaluation metrics
-- [ ] Implement adapters for Mem0, MemOS, OpenViking, and SimpleMem
+- [x] Implement adapters for Mem0, MemOS, OpenViking, and SimpleMem
 - [ ] Build a CLI runner that generates a standardized leaderboard report
 
 ## Installation
 
 ```bash
 pip install -e .
+```
+
+## Adapters
+
+The suite supports the following agent memory systems:
+
+| Adapter | System | Install |
+|---------|--------|---------|
+| `mem0` | [Mem0](https://github.com/mem0ai/mem0) — Universal memory layer for AI agents | `pip install agent-memory-bench[mem0]` |
+| `memos` | [MemOS](https://github.com/memtensor/memos) — Memory operating system for LLMs | `pip install agent-memory-bench[memos]` |
+| `openviking` | [OpenViking](https://github.com/volcengine/OpenViking) — Agent-native context database by ByteDance | `pip install agent-memory-bench[openviking]` |
+| `simplemem` | [SimpleMem](https://simplemem.com) — Simple memory system for AI agents | `pip install agent-memory-bench[simplemem]` |
+
+List adapters from the CLI:
+
+```bash
+agent-memory-bench adapters
 ```
 
 ## Quick Start
@@ -69,6 +86,10 @@ agent-memory-bench run --all
 # Run a specific task against a specific adapter
 agent-memory-bench run --task fact-recall --adapter mem0
 
+# Run against the new OpenViking or SimpleMem adapters
+agent-memory-bench run --task fact-recall --adapter openviking
+agent-memory-bench run --task temporal-reasoning --adapter simplemem
+
 # Generate a leaderboard report
 agent-memory-bench report --output leaderboard.json
 ```
@@ -77,9 +98,11 @@ agent-memory-bench report --output leaderboard.json
 # Example Python usage
 from agent_memory_bench.core import BenchmarkRunner
 from agent_memory_bench.adapters.mem0 import Mem0Adapter
+from agent_memory_bench.adapters.openviking import OpenVikingAdapter
 
 runner = BenchmarkRunner()
 runner.register_adapter("mem0", Mem0Adapter())
+runner.register_adapter("openviking", OpenVikingAdapter())
 results = runner.run(tasks=["fact-recall", "temporal-reasoning"])
 print(results.to_leaderboard())
 ```
@@ -120,6 +143,8 @@ OSS-N001/
         base.py
         mem0.py
         memos.py
+        openviking.py
+        simplemem.py
   tests/
     __init__.py
     test_core.py
