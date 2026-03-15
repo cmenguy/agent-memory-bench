@@ -10,14 +10,7 @@ from agent_memory_bench.core import (
     generate_fact_recall_task,
     generate_temporal_reasoning_task,
 )
-from agent_memory_bench.models import (
-    BenchmarkReport,
-    MemoryEntry,
-    Query,
-    SampleResult,
-    TaskResult,
-    TaskType,
-)
+from agent_memory_bench.models import BenchmarkReport, SampleResult, TaskResult, TaskType
 
 
 class TestMetrics:
