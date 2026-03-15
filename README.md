@@ -12,6 +12,42 @@ The agent memory space exploded in Q1 2026 with multiple well-funded projects co
 
 A comprehensive benchmark suite for agent memory systems, similar to what MTEB did for embeddings or BrowseComp for browsing. It defines standard tasks (fact recall, temporal reasoning, cross-conversation continuity, contradiction detection), provides synthetic and real-world datasets, and outputs standardized leaderboards.
 
+## Architecture
+
+```
+┌─────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ Task        │     │ BenchmarkRunner  │     │ MemoryAdapter   │
+│ Generators  │────>│                  │────>│ (ABC)           │
+│             │     │ - run()          │     │                 │
+│ fact-recall │     │ - run_task()     │     │ - store()       │
+│ temporal    │     │ - register_      │     │ - retrieve()    │
+│ contradiction│    │   adapter()      │     │ - clear()       │
+│ cross-conv  │     └────────┬─────────┘     │ - setup()       │
+│ multi-hop   │              │               │ - teardown()    │
+│ mem-update  │              │               └────────┬────────┘
+│ ctx-window  │              │                        │
+└─────────────┘              v                        v
+                   ┌─────────────────┐     ┌──────────────────┐
+                   │ BenchmarkReport │     │ Concrete Adapters│
+                   │                 │     │                  │
+                   │ - task_results  │     │ Mem0Adapter      │
+                   │ - to_leaderboard│     │ MemOSAdapter     │
+                   └────────┬────────┘     └──────────────────┘
+                            │
+                            v
+                   ┌─────────────────┐
+                   │ Output          │
+                   │                 │
+                   │ Rich table      │
+                   │ JSON file       │
+                   └─────────────────┘
+```
+
+- **Task Generators** (`core.py`): Functions that create `TaskDefinition` objects containing `TaskSample` instances. Each sample specifies memories to store, a query, and expected results. Samples are generated reproducibly via seeded RNG.
+- **BenchmarkRunner** (`core.py`): Orchestrates benchmarking by running each task against each registered adapter. For every sample it stores memories, retrieves results, and computes Recall@5, MRR, and latency metrics.
+- **MemoryAdapter** (`adapters/base.py`): Abstract base class defining the `store()`, `retrieve()`, `clear()`, `setup()`, and `teardown()` interface that all adapters implement.
+- **Report Pipeline** (`runner.py`): Takes a `BenchmarkReport` and renders it as a Rich table for the terminal or saves it as JSON for programmatic consumption.
+
 ## Benchmark Tasks
 
 The suite includes 7 benchmark tasks that evaluate different aspects of agent memory systems:
@@ -50,9 +86,9 @@ Summary by Adapter:
 
 ## MVP Roadmap
 
-- [ ] Define 5-7 core memory benchmark tasks with evaluation metrics
+- [x] Define 5-7 core memory benchmark tasks with evaluation metrics
 - [ ] Implement adapters for Mem0, MemOS, OpenViking, and SimpleMem
-- [ ] Build a CLI runner that generates a standardized leaderboard report
+- [x] Build a CLI runner that generates a standardized leaderboard report
 
 ## Installation
 
@@ -69,8 +105,8 @@ agent-memory-bench run --all
 # Run a specific task against a specific adapter
 agent-memory-bench run --task fact-recall --adapter mem0
 
-# Generate a leaderboard report
-agent-memory-bench report --output leaderboard.json
+# Display a leaderboard from a previous benchmark run
+agent-memory-bench report example_report.json
 ```
 
 ```python
@@ -80,8 +116,8 @@ from agent_memory_bench.adapters.mem0 import Mem0Adapter
 
 runner = BenchmarkRunner()
 runner.register_adapter("mem0", Mem0Adapter())
-results = runner.run(tasks=["fact-recall", "temporal-reasoning"])
-print(results.to_leaderboard())
+report = runner.run(tasks=["fact-recall", "temporal-reasoning"])
+print(report.to_leaderboard())
 ```
 
 ## Development
@@ -102,28 +138,28 @@ agent-memory-bench --help
 ## Project Structure
 
 ```
-OSS-N001/
+agent-memory-bench/
   README.md
   LICENSE
   pyproject.toml
-  .gitignore
+  example_report.json
   src/
     agent_memory_bench/
       __init__.py
-      cli.py
-      core.py
-      models.py
-      config.py
-      runner.py
+      cli.py          # CLI entry point (click commands)
+      core.py          # Task generators and BenchmarkRunner
+      models.py        # Pydantic data models
+      config.py        # BenchmarkConfig for JSON config files
+      runner.py        # Report formatting and output
       adapters/
         __init__.py
-        base.py
-        mem0.py
-        memos.py
+        base.py        # MemoryAdapter ABC
+        mem0.py        # Mem0 adapter
+        memos.py       # MemOS adapter
   tests/
     __init__.py
     test_core.py
-    conftest.py
+    conftest.py        # InMemoryAdapter test fixture
   examples/
     basic_usage.py
 ```
