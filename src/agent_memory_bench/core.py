@@ -247,10 +247,448 @@ def generate_contradiction_detection_task(num_samples: int = 10, seed: int = 42)
     )
 
 
+def generate_cross_conversation_task(num_samples: int = 10, seed: int = 42) -> TaskDefinition:
+    """Generate a cross-conversation continuity benchmark task.
+
+    Tests whether the memory system can retrieve information stored in one
+    conversation session when queried from a different session.
+    """
+    rng = random.Random(seed)
+    scenarios = [
+        (
+            ("session-a", "My favorite programming language is Rust."),
+            ("session-b", "I also enjoy writing Go for backend services."),
+            ("session-c", "What programming language does the user prefer?"),
+            "Rust",
+            "My favorite programming language is Rust.",
+        ),
+        (
+            ("session-work", "I have a meeting with the design team at 3pm on Tuesday."),
+            ("session-personal", "My dentist appointment is Thursday at 10am."),
+            ("session-work", "When is the design team meeting?"),
+            "3pm on Tuesday",
+            "I have a meeting with the design team at 3pm on Tuesday.",
+        ),
+        (
+            ("session-1", "The project uses a PostgreSQL database hosted on AWS RDS."),
+            ("session-2", "We decided to add Redis for caching."),
+            ("session-3", "What database does the project use?"),
+            "PostgreSQL",
+            "The project uses a PostgreSQL database hosted on AWS RDS.",
+        ),
+        (
+            ("session-alpha", "Alice's phone number is 555-0123."),
+            ("session-beta", "Bob's email is bob@example.com."),
+            ("session-gamma", "What is Alice's phone number?"),
+            "555-0123",
+            "Alice's phone number is 555-0123.",
+        ),
+        (
+            ("session-morning", "The deployment pipeline takes about 12 minutes to complete."),
+            ("session-afternoon", "We should optimize the test stage to run in parallel."),
+            ("session-evening", "How long does the deployment pipeline take?"),
+            "12 minutes",
+            "The deployment pipeline takes about 12 minutes to complete.",
+        ),
+        (
+            ("session-jan", "Q1 revenue target is $2 million."),
+            ("session-feb", "Marketing budget for Q1 is $200,000."),
+            ("session-mar", "What is the Q1 revenue target?"),
+            "$2 million",
+            "Q1 revenue target is $2 million.",
+        ),
+        (
+            ("session-dev", "The API authentication uses JWT tokens with RS256."),
+            ("session-ops", "Rate limiting is set to 1000 requests per minute per client."),
+            ("session-security", "What authentication method does the API use?"),
+            "JWT tokens with RS256",
+            "The API authentication uses JWT tokens with RS256.",
+        ),
+        (
+            ("session-onboard", "New employees get 20 days of PTO per year."),
+            ("session-hr", "The health insurance plan is through Blue Cross."),
+            ("session-question", "How many PTO days do new employees get?"),
+            "20 days",
+            "New employees get 20 days of PTO per year.",
+        ),
+        (
+            ("session-frontend", "The UI framework is React 18 with TypeScript."),
+            ("session-backend", "The backend is built with FastAPI and Python 3.12."),
+            ("session-review", "What UI framework does the project use?"),
+            "React 18",
+            "The UI framework is React 18 with TypeScript.",
+        ),
+        (
+            ("session-planning", "Sprint velocity has averaged 34 story points."),
+            ("session-retro", "The team agreed to limit WIP to 3 items per person."),
+            ("session-standup", "What is the team's average sprint velocity?"),
+            "34 story points",
+            "Sprint velocity has averaged 34 story points.",
+        ),
+        (
+            ("session-research", "The competitor launched a similar feature last quarter."),
+            ("session-product", "Our differentiator is real-time collaboration support."),
+            ("session-exec", "What is our product differentiator?"),
+            "real-time collaboration support",
+            "Our differentiator is real-time collaboration support.",
+        ),
+        (
+            ("session-setup", "The CI server runs on a self-hosted GitHub Actions runner."),
+            ("session-debug", "Build failures are usually caused by flaky integration tests."),
+            ("session-infra", "Where does the CI server run?"),
+            "self-hosted GitHub Actions runner",
+            "The CI server runs on a self-hosted GitHub Actions runner.",
+        ),
+    ]
+
+    samples = []
+    selected = rng.sample(scenarios, min(num_samples, len(scenarios)))
+    for i, (mem1, mem2, query_info, answer, expected_content) in enumerate(selected):
+        session1, content1 = mem1
+        session2, content2 = mem2
+        query_session, query_text = query_info
+        base_time = datetime(2026, 1, 1)
+        samples.append(
+            TaskSample(
+                sample_id=f"cross-conv-{i:03d}",
+                memories_to_store=[
+                    MemoryEntry(
+                        content=content1,
+                        session_id=session1,
+                        timestamp=base_time,
+                        metadata={"type": "target"},
+                    ),
+                    MemoryEntry(
+                        content=content2,
+                        session_id=session2,
+                        timestamp=base_time + timedelta(hours=1),
+                        metadata={"type": "distractor"},
+                    ),
+                ],
+                query=Query(text=query_text, session_id=query_session),
+                expected_answer=answer,
+                expected_retrieved_contents=[expected_content],
+            )
+        )
+
+    return TaskDefinition(
+        task_type=TaskType.CROSS_CONVERSATION,
+        name="Cross-Conversation Continuity",
+        description="Tests whether the memory system can retrieve information across conversation boundaries.",
+        samples=samples,
+    )
+
+
+def generate_multi_hop_retrieval_task(num_samples: int = 10, seed: int = 42) -> TaskDefinition:
+    """Generate a multi-hop retrieval benchmark task.
+
+    Tests whether the memory system can retrieve multiple related facts needed
+    to answer a question requiring compositional reasoning.
+    """
+    rng = random.Random(seed)
+    chains = [
+        (
+            "Alice works at Acme Corp.",
+            "Acme Corp headquarters is in New York City.",
+            "Where is Alice's company headquartered?",
+            "New York City",
+        ),
+        (
+            "Bob's manager is Carol.",
+            "Carol reports directly to the CTO.",
+            "Who does Bob's manager report to?",
+            "the CTO",
+        ),
+        (
+            "The app is deployed on Kubernetes cluster 'prod-east'.",
+            "Cluster 'prod-east' runs on AWS in us-east-1.",
+            "What cloud region is the app deployed in?",
+            "us-east-1",
+        ),
+        (
+            "Project Phoenix uses the Spark framework.",
+            "The Spark framework requires Java 17 or higher.",
+            "What Java version does Project Phoenix require?",
+            "Java 17",
+        ),
+        (
+            "The payments service calls the Stripe API.",
+            "The Stripe API key is stored in AWS Secrets Manager.",
+            "Where is the payments service API key stored?",
+            "AWS Secrets Manager",
+        ),
+        (
+            "Dr. Smith is the lead researcher on the vaccine trial.",
+            "The vaccine trial is funded by the Gates Foundation.",
+            "Who funds Dr. Smith's research?",
+            "the Gates Foundation",
+        ),
+        (
+            "The Berlin office handles European sales.",
+            "European sales grew 23% last quarter.",
+            "How much did the Berlin office's sales grow?",
+            "23%",
+        ),
+        (
+            "The mobile app is built with Flutter.",
+            "Flutter apps compile to native ARM code.",
+            "What does the mobile app compile to?",
+            "native ARM code",
+        ),
+        (
+            "Sarah leads the data engineering team.",
+            "The data engineering team maintains the Snowflake warehouse.",
+            "Who maintains the Snowflake warehouse?",
+            "Sarah",
+        ),
+        (
+            "The analytics dashboard uses Grafana.",
+            "Grafana pulls metrics from the Prometheus server on port 9090.",
+            "What port does the analytics data source run on?",
+            "9090",
+        ),
+        (
+            "The CI pipeline is defined in the monorepo.",
+            "The monorepo is hosted on GitHub under the 'platform' org.",
+            "Where is the CI pipeline hosted?",
+            "GitHub under the 'platform' org",
+        ),
+        (
+            "Customer support uses Zendesk for ticketing.",
+            "Zendesk is integrated with Slack channel #support-alerts.",
+            "Where do customer support alerts go?",
+            "Slack channel #support-alerts",
+        ),
+    ]
+
+    samples = []
+    selected = rng.sample(chains, min(num_samples, len(chains)))
+    for i, (fact1, fact2, question, answer) in enumerate(selected):
+        other_facts = [f1 for f1, _, _, _ in chains if f1 != fact1]
+        distractor = rng.choice(other_facts)
+        memories = [
+            MemoryEntry(content=fact1, metadata={"type": "chain-link-1"}),
+            MemoryEntry(content=fact2, metadata={"type": "chain-link-2"}),
+            MemoryEntry(content=distractor, metadata={"type": "distractor"}),
+        ]
+        rng.shuffle(memories)
+        samples.append(
+            TaskSample(
+                sample_id=f"multi-hop-{i:03d}",
+                memories_to_store=memories,
+                query=Query(text=question),
+                expected_answer=answer,
+                expected_retrieved_contents=[fact1, fact2],
+            )
+        )
+
+    return TaskDefinition(
+        task_type=TaskType.MULTI_HOP_RETRIEVAL,
+        name="Multi-Hop Retrieval",
+        description="Tests whether the memory system can retrieve multiple facts needed for compositional reasoning.",
+        samples=samples,
+    )
+
+
+def generate_memory_update_task(num_samples: int = 10, seed: int = 42) -> TaskDefinition:
+    """Generate a memory update benchmark task.
+
+    Tests whether the memory system can handle explicit updates to stored facts,
+    returning the most recent value rather than the original.
+    """
+    rng = random.Random(seed)
+    updates = [
+        (
+            "User's home address is 123 Oak Street, Springfield.",
+            "User updated their home address to 456 Maple Avenue, Shelbyville.",
+            "What is the user's home address?",
+            "456 Maple Avenue, Shelbyville",
+        ),
+        (
+            "The default branch is 'develop'.",
+            "Updated: the default branch has been changed to 'main'.",
+            "What is the default branch?",
+            "main",
+        ),
+        (
+            "The team standup is at 9:00 AM daily.",
+            "Update: standup time changed to 9:30 AM daily.",
+            "When is the team standup?",
+            "9:30 AM",
+        ),
+        (
+            "The primary contact for vendor X is John at john@vendor.com.",
+            "Updated: the primary contact for vendor X is now Lisa at lisa@vendor.com.",
+            "Who is the primary contact for vendor X?",
+            "Lisa",
+        ),
+        (
+            "The application log level is set to DEBUG.",
+            "Updated: log level changed to WARNING for production.",
+            "What is the application log level?",
+            "WARNING",
+        ),
+        (
+            "The monthly storage quota is 500 GB.",
+            "Updated: monthly storage quota increased to 2 TB.",
+            "What is the monthly storage quota?",
+            "2 TB",
+        ),
+        (
+            "The on-call rotation is weekly, starting on Mondays.",
+            "Updated: on-call rotation changed to bi-weekly, starting on Wednesdays.",
+            "How does the on-call rotation work?",
+            "bi-weekly, starting on Wednesdays",
+        ),
+        (
+            "The staging environment URL is staging.example.com.",
+            "Updated: staging environment moved to stage.newdomain.io.",
+            "What is the staging environment URL?",
+            "stage.newdomain.io",
+        ),
+        (
+            "Password policy requires minimum 8 characters.",
+            "Updated: password policy now requires minimum 12 characters with special characters.",
+            "What is the password policy minimum length?",
+            "12 characters",
+        ),
+        (
+            "The data retention period is 30 days.",
+            "Updated: data retention period extended to 90 days.",
+            "What is the data retention period?",
+            "90 days",
+        ),
+        (
+            "Max file upload size is 10 MB.",
+            "Updated: max file upload size increased to 50 MB.",
+            "What is the max file upload size?",
+            "50 MB",
+        ),
+        (
+            "The backup schedule runs at midnight UTC.",
+            "Updated: backup schedule changed to run at 3 AM UTC.",
+            "When do backups run?",
+            "3 AM UTC",
+        ),
+    ]
+
+    samples = []
+    selected = rng.sample(updates, min(num_samples, len(updates)))
+    for i, (original, updated, question, answer) in enumerate(selected):
+        base_time = datetime(2026, 1, 1)
+        samples.append(
+            TaskSample(
+                sample_id=f"mem-update-{i:03d}",
+                memories_to_store=[
+                    MemoryEntry(
+                        content=original,
+                        timestamp=base_time,
+                        metadata={"type": "original", "version": 1},
+                    ),
+                    MemoryEntry(
+                        content=updated,
+                        timestamp=base_time + timedelta(days=14),
+                        metadata={"type": "update", "version": 2, "supersedes": "original"},
+                    ),
+                ],
+                query=Query(text=question),
+                expected_answer=answer,
+                expected_retrieved_contents=[updated],
+            )
+        )
+
+    return TaskDefinition(
+        task_type=TaskType.MEMORY_UPDATE,
+        name="Memory Update",
+        description="Tests whether the memory system correctly handles explicit updates and returns the latest value.",
+        samples=samples,
+    )
+
+
+def generate_context_window_efficiency_task(num_samples: int = 10, seed: int = 42) -> TaskDefinition:
+    """Generate a context window efficiency benchmark task.
+
+    Tests how well the memory system maintains retrieval quality as the number
+    of stored memories grows from small to large.
+    """
+    rng = random.Random(seed)
+    target_facts = [
+        ("The company was founded in 2015.", "When was the company founded?", "2015"),
+        ("The CEO's name is Maria Chen.", "Who is the CEO?", "Maria Chen"),
+        ("Annual revenue last year was $4.2 million.", "What was last year's revenue?", "$4.2 million"),
+        ("The main product is an AI-powered code review tool.", "What is the main product?", "AI-powered code review tool"),
+        ("The engineering team has 28 members.", "How large is the engineering team?", "28"),
+        ("The next board meeting is on April 10th.", "When is the next board meeting?", "April 10th"),
+        ("The primary customer segment is mid-market SaaS companies.", "Who is the primary customer segment?", "mid-market SaaS companies"),
+        ("The server uptime SLA is 99.95%.", "What is the uptime SLA?", "99.95%"),
+        ("The mobile app has 150,000 monthly active users.", "How many monthly active users does the mobile app have?", "150,000"),
+        ("The NPS score last quarter was 72.", "What was the NPS score?", "72"),
+        ("The data center is located in Frankfurt, Germany.", "Where is the data center?", "Frankfurt, Germany"),
+        ("The company has 3 pending patents.", "How many pending patents does the company have?", "3"),
+    ]
+
+    filler_templates = [
+        "Internal memo #{n}: Discussed progress on sprint goals for week {w}.",
+        "Meeting notes #{n}: Reviewed design specs for feature {w}.",
+        "Status update #{n}: Completed {w} out of 10 planned tasks.",
+        "Team sync #{n}: Addressed blockers for milestone {w}.",
+        "Daily log #{n}: Processed {w} support tickets today.",
+        "Reminder #{n}: Code freeze for release {w} starts Friday.",
+        "Note #{n}: Updated documentation for module {w}.",
+        "Action item #{n}: Follow up on feedback from review {w}.",
+    ]
+
+    scales = [10, 50, 100, 200]
+    samples = []
+    selected_facts = rng.sample(target_facts, min(num_samples, len(target_facts)))
+
+    for i, (fact, question, answer) in enumerate(selected_facts):
+        scale = scales[i % len(scales)]
+        filler_rng = random.Random(seed + i)
+
+        fillers = []
+        for n in range(scale):
+            template = filler_rng.choice(filler_templates)
+            fillers.append(
+                MemoryEntry(
+                    content=template.format(n=n, w=filler_rng.randint(1, 100)),
+                    metadata={"type": "filler", "scale": scale},
+                )
+            )
+
+        target_pos = filler_rng.randint(0, len(fillers))
+        fillers.insert(
+            target_pos,
+            MemoryEntry(content=fact, metadata={"type": "target", "scale": scale}),
+        )
+
+        samples.append(
+            TaskSample(
+                sample_id=f"ctx-window-{i:03d}-scale-{scale}",
+                memories_to_store=fillers,
+                query=Query(text=question),
+                expected_answer=answer,
+                expected_retrieved_contents=[fact],
+                metadata={"scale": scale},
+            )
+        )
+
+    return TaskDefinition(
+        task_type=TaskType.CONTEXT_WINDOW_EFFICIENCY,
+        name="Context Window Efficiency",
+        description="Tests retrieval accuracy as the number of stored memories grows.",
+        samples=samples,
+    )
+
+
 TASK_GENERATORS = {
     TaskType.FACT_RECALL: generate_fact_recall_task,
     TaskType.TEMPORAL_REASONING: generate_temporal_reasoning_task,
     TaskType.CONTRADICTION_DETECTION: generate_contradiction_detection_task,
+    TaskType.CROSS_CONVERSATION: generate_cross_conversation_task,
+    TaskType.MULTI_HOP_RETRIEVAL: generate_multi_hop_retrieval_task,
+    TaskType.MEMORY_UPDATE: generate_memory_update_task,
+    TaskType.CONTEXT_WINDOW_EFFICIENCY: generate_context_window_efficiency_task,
 }
 
 
