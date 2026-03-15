@@ -69,6 +69,16 @@ agent-memory-bench run --all
 # Run a specific task against a specific adapter
 agent-memory-bench run --task fact-recall --adapter mem0
 
+# Run from a config file
+agent-memory-bench run --config bench.json
+
+# CLI flags override config values
+agent-memory-bench run --config bench.json --seed 99 --num-samples 100
+
+# Generate a sample config file
+agent-memory-bench config
+agent-memory-bench config -o bench.json
+
 # Generate a leaderboard report
 agent-memory-bench report --output leaderboard.json
 ```
