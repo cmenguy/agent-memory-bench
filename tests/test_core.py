@@ -75,6 +75,19 @@ class TestTaskGeneration:
         assert task.task_type == TaskType.TEMPORAL_REASONING
         assert len(task.samples) == 3
 
+    def test_temporal_reasoning_diverse_scenarios(self):
+        task = generate_temporal_reasoning_task(num_samples=5, seed=42)
+        queries = [s.query.text for s in task.samples]
+        # All queries should be distinct (diverse scenarios)
+        assert len(set(queries)) == 5
+
+    def test_temporal_reasoning_has_old_and_new(self):
+        task = generate_temporal_reasoning_task(num_samples=3, seed=42)
+        for sample in task.samples:
+            assert len(sample.memories_to_store) == 2
+            timestamps = sorted(m.timestamp for m in sample.memories_to_store)
+            assert timestamps[0] < timestamps[1]
+
     def test_contradiction_detection_generates_samples(self):
         task = generate_contradiction_detection_task(num_samples=3, seed=42)
         assert task.task_type == TaskType.CONTRADICTION_DETECTION
