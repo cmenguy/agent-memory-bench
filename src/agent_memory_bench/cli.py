@@ -45,9 +45,16 @@ def main():
 @click.option("--num-samples", "-n", default=20, help="Number of samples per task")
 @click.option("--seed", "-s", default=42, help="Random seed for reproducibility")
 @click.option("--output", "-o", type=click.Path(), help="Save report to JSON file")
-def run(task, adapter, run_all, num_samples, seed, output):
+@click.option("--dataset-dir", "-d", type=click.Path(exists=True), help="Directory with custom dataset JSON files")
+def run(task, adapter, run_all, num_samples, seed, output, dataset_dir):
     """Run benchmark tasks against memory system adapters."""
-    runner = BenchmarkRunner(seed=seed, num_samples=num_samples)
+    from pathlib import Path as _Path
+
+    runner = BenchmarkRunner(
+        seed=seed,
+        num_samples=num_samples,
+        dataset_dir=_Path(dataset_dir) if dataset_dir else None,
+    )
 
     # Register adapters
     adapter_names = list(adapter) if adapter else (["mem0", "memos"] if run_all else [])

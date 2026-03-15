@@ -32,6 +32,12 @@ memos = [
 [project.scripts]
 agent-memory-bench = "agent_memory_bench.cli:main"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_memory_bench"]
+
+[tool.hatch.build]
+include = ["src/agent_memory_bench/**/*.py", "src/agent_memory_bench/**/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
