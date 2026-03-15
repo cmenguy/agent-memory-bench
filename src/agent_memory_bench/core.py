@@ -117,12 +117,12 @@ def generate_temporal_reasoning_task(num_samples: int = 10, seed: int = 42) -> T
         # Create a sequence of events
         events = [
             MemoryEntry(
-                content=f"User set their favorite color to blue.",
+                content="User set their favorite color to blue.",
                 timestamp=base_time + timedelta(days=i * 10),
                 metadata={"type": "preference", "version": 1},
             ),
             MemoryEntry(
-                content=f"User changed their favorite color to green.",
+                content="User changed their favorite color to green.",
                 timestamp=base_time + timedelta(days=i * 10 + 5),
                 metadata={"type": "preference", "version": 2},
             ),
