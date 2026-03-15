@@ -16,8 +16,6 @@ from agent_memory_bench.core import (
 )
 from agent_memory_bench.models import (
     BenchmarkReport,
-    MemoryEntry,
-    Query,
     SampleResult,
     TaskResult,
     TaskType,
