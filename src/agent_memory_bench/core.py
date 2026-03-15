@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from agent_memory_bench.adapters.base import MemoryAdapter
 from agent_memory_bench.models import (
@@ -45,35 +46,49 @@ def compute_mrr(retrieved: list[str], expected: list[str]) -> float:
     return sum(reciprocal_ranks) / len(reciprocal_ranks)
 
 
-def generate_fact_recall_task(num_samples: int = 20, seed: int = 42) -> TaskDefinition:
+def generate_fact_recall_task(
+    num_samples: int = 20, seed: int = 42, dataset_path: Path | None = None
+) -> TaskDefinition:
     """Generate a fact recall benchmark task.
 
     Tests whether the memory system can store facts and retrieve them
     when queried with related questions.
+
+    Args:
+        num_samples: Number of samples to generate.
+        seed: Random seed for reproducibility.
+        dataset_path: Optional path to a custom fact recall JSON dataset.
     """
+    from agent_memory_bench.datasets import FactRecallEntry, load_dataset
+
     rng = random.Random(seed)
-    facts = [
-        ("The capital of France is Paris.", "What is the capital of France?", "Paris"),
-        ("Python was created by Guido van Rossum in 1991.", "Who created Python?", "Guido van Rossum"),
-        ("The speed of light is approximately 299,792,458 meters per second.", "What is the speed of light?", "299,792,458"),
-        ("Mount Everest is 8,849 meters tall.", "How tall is Mount Everest?", "8,849"),
-        ("The human body has 206 bones.", "How many bones does the human body have?", "206"),
-        ("Water boils at 100 degrees Celsius at sea level.", "At what temperature does water boil?", "100"),
-        ("The Great Wall of China is approximately 21,196 kilometers long.", "How long is the Great Wall of China?", "21,196"),
-        ("DNA stands for deoxyribonucleic acid.", "What does DNA stand for?", "deoxyribonucleic acid"),
-        ("The Amazon River is the largest river by volume.", "What is the largest river by volume?", "Amazon"),
-        ("Jupiter is the largest planet in our solar system.", "What is the largest planet?", "Jupiter"),
-        ("The first Moon landing was in 1969.", "When was the first Moon landing?", "1969"),
-        ("Oxygen has the atomic number 8.", "What is the atomic number of oxygen?", "8"),
-        ("Shakespeare wrote 37 plays.", "How many plays did Shakespeare write?", "37"),
-        ("The Pacific Ocean is the largest ocean.", "What is the largest ocean?", "Pacific"),
-        ("Einstein published the theory of general relativity in 1915.", "When was general relativity published?", "1915"),
-        ("The Sahara is the largest hot desert.", "What is the largest hot desert?", "Sahara"),
-        ("A marathon is 42.195 kilometers.", "How long is a marathon?", "42.195"),
-        ("The Earth is approximately 4.5 billion years old.", "How old is the Earth?", "4.5 billion"),
-        ("Beethoven composed 9 symphonies.", "How many symphonies did Beethoven compose?", "9"),
-        ("Gold has the chemical symbol Au.", "What is the chemical symbol for gold?", "Au"),
-    ]
+
+    if dataset_path is not None:
+        entries = load_dataset("fact_recall.json", FactRecallEntry, path=dataset_path)
+        facts = [(e.fact, e.question, e.answer) for e in entries]
+    else:
+        facts = [
+            ("The capital of France is Paris.", "What is the capital of France?", "Paris"),
+            ("Python was created by Guido van Rossum in 1991.", "Who created Python?", "Guido van Rossum"),
+            ("The speed of light is approximately 299,792,458 meters per second.", "What is the speed of light?", "299,792,458"),
+            ("Mount Everest is 8,849 meters tall.", "How tall is Mount Everest?", "8,849"),
+            ("The human body has 206 bones.", "How many bones does the human body have?", "206"),
+            ("Water boils at 100 degrees Celsius at sea level.", "At what temperature does water boil?", "100"),
+            ("The Great Wall of China is approximately 21,196 kilometers long.", "How long is the Great Wall of China?", "21,196"),
+            ("DNA stands for deoxyribonucleic acid.", "What does DNA stand for?", "deoxyribonucleic acid"),
+            ("The Amazon River is the largest river by volume.", "What is the largest river by volume?", "Amazon"),
+            ("Jupiter is the largest planet in our solar system.", "What is the largest planet?", "Jupiter"),
+            ("The first Moon landing was in 1969.", "When was the first Moon landing?", "1969"),
+            ("Oxygen has the atomic number 8.", "What is the atomic number of oxygen?", "8"),
+            ("Shakespeare wrote 37 plays.", "How many plays did Shakespeare write?", "37"),
+            ("The Pacific Ocean is the largest ocean.", "What is the largest ocean?", "Pacific"),
+            ("Einstein published the theory of general relativity in 1915.", "When was general relativity published?", "1915"),
+            ("The Sahara is the largest hot desert.", "What is the largest hot desert?", "Sahara"),
+            ("A marathon is 42.195 kilometers.", "How long is a marathon?", "42.195"),
+            ("The Earth is approximately 4.5 billion years old.", "How old is the Earth?", "4.5 billion"),
+            ("Beethoven composed 9 symphonies.", "How many symphonies did Beethoven compose?", "9"),
+            ("Gold has the chemical symbol Au.", "What is the chemical symbol for gold?", "Au"),
+        ]
 
     samples = []
     selected = rng.sample(facts, min(num_samples, len(facts)))
@@ -104,25 +119,53 @@ def generate_fact_recall_task(num_samples: int = 20, seed: int = 42) -> TaskDefi
     )
 
 
-def generate_temporal_reasoning_task(num_samples: int = 10, seed: int = 42) -> TaskDefinition:
+def generate_temporal_reasoning_task(
+    num_samples: int = 10, seed: int = 42, dataset_path: Path | None = None
+) -> TaskDefinition:
     """Generate a temporal reasoning benchmark task.
 
     Tests whether the memory system handles time-ordered information correctly.
+
+    Args:
+        num_samples: Number of samples to generate.
+        seed: Random seed for reproducibility.
+        dataset_path: Optional path to a custom temporal reasoning JSON dataset.
     """
+    from agent_memory_bench.datasets import TemporalEntry, load_dataset
+
     rng = random.Random(seed)
     base_time = datetime(2026, 1, 1)
-    samples = []
 
-    for i in range(num_samples):
-        # Create a sequence of events
+    if dataset_path is not None:
+        entries = load_dataset("temporal.json", TemporalEntry, path=dataset_path)
+        scenarios = [
+            (e.old_statement, e.new_statement, e.question, e.answer) for e in entries
+        ]
+    else:
+        scenarios = [
+            (
+                "User set their favorite color to blue.",
+                "User changed their favorite color to green.",
+                "What is the user's current favorite color?",
+                "green",
+            ),
+        ]
+
+    samples = []
+    # When dataset has fewer entries than num_samples, repeat scenarios
+    if len(scenarios) >= num_samples:
+        selected = rng.sample(scenarios, num_samples)
+    else:
+        selected = (scenarios * ((num_samples // len(scenarios)) + 1))[:num_samples]
+    for i, (old_stmt, new_stmt, question, answer) in enumerate(selected):
         events = [
             MemoryEntry(
-                content=f"User set their favorite color to blue.",
+                content=old_stmt,
                 timestamp=base_time + timedelta(days=i * 10),
                 metadata={"type": "preference", "version": 1},
             ),
             MemoryEntry(
-                content=f"User changed their favorite color to green.",
+                content=new_stmt,
                 timestamp=base_time + timedelta(days=i * 10 + 5),
                 metadata={"type": "preference", "version": 2},
             ),
@@ -133,9 +176,9 @@ def generate_temporal_reasoning_task(num_samples: int = 10, seed: int = 42) -> T
             TaskSample(
                 sample_id=f"temporal-{i:03d}",
                 memories_to_store=events,
-                query=Query(text="What is the user's current favorite color?"),
-                expected_answer="green",
-                expected_retrieved_contents=["User changed their favorite color to green."],
+                query=Query(text=question),
+                expected_answer=answer,
+                expected_retrieved_contents=[new_stmt],
             )
         )
 
@@ -147,13 +190,29 @@ def generate_temporal_reasoning_task(num_samples: int = 10, seed: int = 42) -> T
     )
 
 
-def generate_contradiction_detection_task(num_samples: int = 10, seed: int = 42) -> TaskDefinition:
+def generate_contradiction_detection_task(
+    num_samples: int = 10, seed: int = 42, dataset_path: Path | None = None
+) -> TaskDefinition:
     """Generate a contradiction detection benchmark task.
 
     Tests whether the memory system can detect and handle contradictory information.
+
+    Args:
+        num_samples: Number of samples to generate.
+        seed: Random seed for reproducibility.
+        dataset_path: Optional path to a custom contradictions JSON dataset.
     """
+    from agent_memory_bench.datasets import ContradictionEntry, load_dataset
+
     samples = []
-    contradictions = [
+
+    if dataset_path is not None:
+        entries = load_dataset("contradictions.json", ContradictionEntry, path=dataset_path)
+        contradictions = [
+            (e.old_fact, e.new_fact, e.question, e.answer) for e in entries
+        ]
+    else:
+        contradictions = [
         (
             "The project deadline is March 15th.",
             "The project deadline has been moved to April 1st.",
@@ -691,14 +750,21 @@ TASK_GENERATORS = {
     TaskType.CONTEXT_WINDOW_EFFICIENCY: generate_context_window_efficiency_task,
 }
 
+_TASK_DATASET_FILES = {
+    TaskType.FACT_RECALL: "fact_recall.json",
+    TaskType.TEMPORAL_REASONING: "temporal.json",
+    TaskType.CONTRADICTION_DETECTION: "contradictions.json",
+}
+
 
 class BenchmarkRunner:
     """Runs benchmark tasks against registered memory adapters."""
 
-    def __init__(self, seed: int = 42, num_samples: int = 20):
+    def __init__(self, seed: int = 42, num_samples: int = 20, dataset_dir: Path | None = None):
         self._adapters: dict[str, MemoryAdapter] = {}
         self._seed = seed
         self._num_samples = num_samples
+        self._dataset_dir = dataset_dir
 
     def register_adapter(self, name: str, adapter: MemoryAdapter) -> None:
         """Register a memory adapter for benchmarking."""
@@ -785,9 +851,17 @@ class BenchmarkRunner:
                     generator = TASK_GENERATORS.get(task_type)
                     if generator is None:
                         continue
-                    task_def = generator(
-                        num_samples=self._num_samples, seed=self._seed
-                    )
+                    kwargs: dict = {
+                        "num_samples": self._num_samples,
+                        "seed": self._seed,
+                    }
+                    if self._dataset_dir is not None:
+                        dataset_file = _TASK_DATASET_FILES.get(task_type)
+                        if dataset_file:
+                            path = self._dataset_dir / dataset_file
+                            if path.exists():
+                                kwargs["dataset_path"] = path
+                    task_def = generator(**kwargs)
                     result = self.run_task(adapter, task_def)
                     report.task_results.append(result)
             finally:

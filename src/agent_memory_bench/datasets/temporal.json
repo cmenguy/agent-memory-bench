@@ -1,0 +1,12 @@
+[
+  {"old_statement": "User set their favorite color to blue.", "new_statement": "User changed their favorite color to green.", "question": "What is the user's current favorite color?", "answer": "green"},
+  {"old_statement": "User's timezone is set to PST.", "new_statement": "User moved to EST timezone.", "question": "What timezone is the user in?", "answer": "EST"},
+  {"old_statement": "Default language is English.", "new_statement": "Changed default language to Spanish.", "question": "What is the default language?", "answer": "Spanish"},
+  {"old_statement": "User's email is alice@old.com.", "new_statement": "User updated email to alice@new.com.", "question": "What is the user's email?", "answer": "alice@new.com"},
+  {"old_statement": "Team standup is at 9am daily.", "new_statement": "Team standup moved to 10:30am daily.", "question": "When is the team standup?", "answer": "10:30am"},
+  {"old_statement": "The project uses Python 3.9.", "new_statement": "The project was upgraded to Python 3.12.", "question": "What Python version does the project use?", "answer": "Python 3.12"},
+  {"old_statement": "The deploy target is us-east-1.", "new_statement": "Deploy target changed to eu-west-1.", "question": "What is the deploy target region?", "answer": "eu-west-1"},
+  {"old_statement": "The database password rotates monthly.", "new_statement": "Database password rotation changed to weekly.", "question": "How often does the database password rotate?", "answer": "weekly"},
+  {"old_statement": "The CI pipeline runs on Jenkins.", "new_statement": "CI pipeline migrated to GitHub Actions.", "question": "What CI system does the project use?", "answer": "GitHub Actions"},
+  {"old_statement": "The on-call rotation starts on Mondays.", "new_statement": "On-call rotation changed to start on Wednesdays.", "question": "When does the on-call rotation start?", "answer": "Wednesdays"}
+]

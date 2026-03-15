@@ -1,0 +1,12 @@
+[
+  {"old_fact": "The project deadline is March 15th.", "new_fact": "The project deadline has been moved to April 1st.", "question": "What is the project deadline?", "answer": "April 1st"},
+  {"old_fact": "The meeting is scheduled for 2pm.", "new_fact": "The meeting has been rescheduled to 4pm.", "question": "When is the meeting?", "answer": "4pm"},
+  {"old_fact": "The budget for Q1 is $50,000.", "new_fact": "The Q1 budget has been revised to $75,000.", "question": "What is the Q1 budget?", "answer": "$75,000"},
+  {"old_fact": "John is the team lead for Project Alpha.", "new_fact": "Sarah has replaced John as team lead for Project Alpha.", "question": "Who is the team lead for Project Alpha?", "answer": "Sarah"},
+  {"old_fact": "The server runs on Python 3.9.", "new_fact": "The server has been upgraded to Python 3.12.", "question": "What Python version does the server run?", "answer": "Python 3.12"},
+  {"old_fact": "The office is located on the 5th floor.", "new_fact": "The team has moved to the 8th floor.", "question": "What floor is the office on?", "answer": "8th floor"},
+  {"old_fact": "The API rate limit is 100 requests per minute.", "new_fact": "The API rate limit has been increased to 500 requests per minute.", "question": "What is the API rate limit?", "answer": "500 requests per minute"},
+  {"old_fact": "The database uses PostgreSQL 14.", "new_fact": "We migrated the database to PostgreSQL 16.", "question": "What version of PostgreSQL is the database?", "answer": "PostgreSQL 16"},
+  {"old_fact": "The deploy target is AWS us-east-1.", "new_fact": "We switched the deploy target to AWS eu-west-1.", "question": "What is the deploy target region?", "answer": "eu-west-1"},
+  {"old_fact": "The sprint duration is 2 weeks.", "new_fact": "We changed sprint duration to 3 weeks.", "question": "How long is the sprint?", "answer": "3 weeks"}
+]
