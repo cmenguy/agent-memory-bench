@@ -108,21 +108,98 @@ def generate_temporal_reasoning_task(num_samples: int = 10, seed: int = 42) -> T
     """Generate a temporal reasoning benchmark task.
 
     Tests whether the memory system handles time-ordered information correctly.
+    Each scenario presents an old value and a newer update; the memory system
+    should return the most recent value when queried.
     """
     rng = random.Random(seed)
     base_time = datetime(2026, 1, 1)
-    samples = []
 
-    for i in range(num_samples):
-        # Create a sequence of events
+    temporal_scenarios = [
+        (
+            "User set their favorite color to blue.",
+            "User changed their favorite color to green.",
+            "What is the user's current favorite color?",
+            "green",
+        ),
+        (
+            "User's timezone is set to PST.",
+            "User moved to EST timezone.",
+            "What timezone is the user in?",
+            "EST",
+        ),
+        (
+            "Default language is English.",
+            "Changed default language to Spanish.",
+            "What is the default language?",
+            "Spanish",
+        ),
+        (
+            "User's email is alice@old.com.",
+            "User updated email to alice@new.com.",
+            "What is the user's email?",
+            "alice@new.com",
+        ),
+        (
+            "Team standup is at 9am daily.",
+            "Team standup moved to 10:30am daily.",
+            "When is the team standup?",
+            "10:30am",
+        ),
+        (
+            "The project uses Python 3.9.",
+            "The project was upgraded to Python 3.12.",
+            "What Python version does the project use?",
+            "Python 3.12",
+        ),
+        (
+            "The deploy target is us-east-1.",
+            "Deploy target changed to eu-west-1.",
+            "What is the deploy target region?",
+            "eu-west-1",
+        ),
+        (
+            "The database password rotates monthly.",
+            "Database password rotation changed to weekly.",
+            "How often does the database password rotate?",
+            "weekly",
+        ),
+        (
+            "The CI pipeline runs on Jenkins.",
+            "CI pipeline migrated to GitHub Actions.",
+            "What CI system does the project use?",
+            "GitHub Actions",
+        ),
+        (
+            "The on-call rotation starts on Mondays.",
+            "On-call rotation changed to start on Wednesdays.",
+            "When does the on-call rotation start?",
+            "Wednesdays",
+        ),
+        (
+            "Max upload file size is 10 MB.",
+            "Max upload file size increased to 50 MB.",
+            "What is the max upload file size?",
+            "50 MB",
+        ),
+        (
+            "The sprint duration is 2 weeks.",
+            "Sprint duration changed to 3 weeks.",
+            "How long is the sprint?",
+            "3 weeks",
+        ),
+    ]
+
+    samples = []
+    selected = rng.sample(temporal_scenarios, min(num_samples, len(temporal_scenarios)))
+    for i, (old_stmt, new_stmt, question, answer) in enumerate(selected):
         events = [
             MemoryEntry(
-                content=f"User set their favorite color to blue.",
+                content=old_stmt,
                 timestamp=base_time + timedelta(days=i * 10),
                 metadata={"type": "preference", "version": 1},
             ),
             MemoryEntry(
-                content=f"User changed their favorite color to green.",
+                content=new_stmt,
                 timestamp=base_time + timedelta(days=i * 10 + 5),
                 metadata={"type": "preference", "version": 2},
             ),
@@ -133,9 +210,9 @@ def generate_temporal_reasoning_task(num_samples: int = 10, seed: int = 42) -> T
             TaskSample(
                 sample_id=f"temporal-{i:03d}",
                 memories_to_store=events,
-                query=Query(text="What is the user's current favorite color?"),
-                expected_answer="green",
-                expected_retrieved_contents=["User changed their favorite color to green."],
+                query=Query(text=question),
+                expected_answer=answer,
+                expected_retrieved_contents=[new_stmt],
             )
         )
 
