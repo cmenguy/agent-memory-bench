@@ -28,6 +28,12 @@ mem0 = [
 memos = [
     "memos-sdk",
 ]
+openviking = [
+    "openviking",
+]
+simplemem = [
+    "simplemem",
+]
 
 [project.scripts]
 agent-memory-bench = "agent_memory_bench.cli:main"
