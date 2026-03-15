@@ -44,8 +44,9 @@ def main():
 @click.option("--all", "run_all", is_flag=True, help="Run all tasks against all adapters")
 @click.option("--num-samples", "-n", default=20, help="Number of samples per task")
 @click.option("--seed", "-s", default=42, help="Random seed for reproducibility")
-@click.option("--output", "-o", type=click.Path(), help="Save report to JSON file")
-def run(task, adapter, run_all, num_samples, seed, output):
+@click.option("--output", "-o", type=click.Path(), help="Save report to file")
+@click.option("--format", "fmt", type=click.Choice(["json", "markdown", "html"]), default="json", help="Output format for saved report")
+def run(task, adapter, run_all, num_samples, seed, output, fmt):
     """Run benchmark tasks against memory system adapters."""
     runner = BenchmarkRunner(seed=seed, num_samples=num_samples)
 
@@ -71,8 +72,8 @@ def run(task, adapter, run_all, num_samples, seed, output):
     print_report(report)
 
     if output:
-        save_report(report, Path(output))
-        click.echo(f"Report saved to {output}")
+        save_report(report, Path(output), fmt=fmt)
+        click.echo(f"Report saved to {output} (format: {fmt})")
 
 
 @main.command()
