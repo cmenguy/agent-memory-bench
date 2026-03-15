@@ -17,6 +17,9 @@ AVAILABLE_TASKS = [t.value for t in TASK_GENERATORS]
 def _resolve_adapter(name: str):
     """Resolve adapter by name, importing and instantiating it."""
     match name:
+        case "inmemory":
+            from agent_memory_bench.adapters.inmemory import InMemoryAdapter
+            return InMemoryAdapter()
         case "mem0":
             from agent_memory_bench.adapters.mem0 import Mem0Adapter
             return Mem0Adapter()
@@ -25,7 +28,7 @@ def _resolve_adapter(name: str):
             return MemOSAdapter()
         case _:
             raise click.BadParameter(
-                f"Unknown adapter: {name}. Available: mem0, memos"
+                f"Unknown adapter: {name}. Available: inmemory, mem0, memos"
             )
 
 
@@ -40,7 +43,7 @@ def main():
 
 @main.command()
 @click.option("--task", "-t", multiple=True, help=f"Task(s) to run. Available: {AVAILABLE_TASKS}")
-@click.option("--adapter", "-a", multiple=True, help="Adapter(s) to benchmark. Available: mem0, memos")
+@click.option("--adapter", "-a", multiple=True, help="Adapter(s) to benchmark. Available: inmemory, mem0, memos")
 @click.option("--all", "run_all", is_flag=True, help="Run all tasks against all adapters")
 @click.option("--num-samples", "-n", default=20, help="Number of samples per task")
 @click.option("--seed", "-s", default=42, help="Random seed for reproducibility")
@@ -50,7 +53,7 @@ def run(task, adapter, run_all, num_samples, seed, output):
     runner = BenchmarkRunner(seed=seed, num_samples=num_samples)
 
     # Register adapters
-    adapter_names = list(adapter) if adapter else (["mem0", "memos"] if run_all else [])
+    adapter_names = list(adapter) if adapter else (["inmemory", "mem0", "memos"] if run_all else [])
     if not adapter_names:
         raise click.UsageError("Specify --adapter or use --all to benchmark all adapters.")
 
@@ -91,6 +94,7 @@ def adapters():
     """List available memory system adapters."""
     click.echo("Available adapters:\n")
     adapter_info = [
+        ("inmemory", "In-Memory (keyword baseline) - built-in, no dependencies", "built-in"),
         ("mem0", "Mem0 - Universal memory layer for AI agents", "pip install agent-memory-bench[mem0]"),
         ("memos", "MemOS - Memory operating system for LLMs", "pip install agent-memory-bench[memos]"),
     ]
