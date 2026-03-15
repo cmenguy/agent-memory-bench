@@ -6,8 +6,12 @@ from agent_memory_bench.core import (
     BenchmarkRunner,
     compute_mrr,
     compute_recall_at_k,
+    generate_context_window_efficiency_task,
     generate_contradiction_detection_task,
+    generate_cross_conversation_task,
     generate_fact_recall_task,
+    generate_memory_update_task,
+    generate_multi_hop_retrieval_task,
     generate_temporal_reasoning_task,
 )
 from agent_memory_bench.models import (
@@ -81,6 +85,118 @@ class TestTaskGeneration:
     def test_reproducibility_with_same_seed(self):
         task1 = generate_fact_recall_task(num_samples=5, seed=99)
         task2 = generate_fact_recall_task(num_samples=5, seed=99)
+        for s1, s2 in zip(task1.samples, task2.samples):
+            assert s1.sample_id == s2.sample_id
+            assert s1.expected_answer == s2.expected_answer
+
+    def test_cross_conversation_generates_samples(self):
+        task = generate_cross_conversation_task(num_samples=5, seed=42)
+        assert task.task_type == TaskType.CROSS_CONVERSATION
+        assert len(task.samples) == 5
+        for sample in task.samples:
+            assert len(sample.memories_to_store) == 2
+            assert sample.query.text
+            assert sample.expected_answer
+            # Memories should have different session_ids
+            session_ids = {m.session_id for m in sample.memories_to_store}
+            assert len(session_ids) == 2
+
+    def test_cross_conversation_query_session_differs(self):
+        task = generate_cross_conversation_task(num_samples=10, seed=42)
+        for sample in task.samples:
+            memory_sessions = {m.session_id for m in sample.memories_to_store}
+            # Query session may or may not overlap with memory sessions,
+            # but the key property is that multiple sessions are used
+            assert len(memory_sessions) >= 2
+
+    def test_cross_conversation_reproducibility(self):
+        task1 = generate_cross_conversation_task(num_samples=5, seed=77)
+        task2 = generate_cross_conversation_task(num_samples=5, seed=77)
+        for s1, s2 in zip(task1.samples, task2.samples):
+            assert s1.sample_id == s2.sample_id
+            assert s1.expected_answer == s2.expected_answer
+
+    def test_multi_hop_retrieval_generates_samples(self):
+        task = generate_multi_hop_retrieval_task(num_samples=5, seed=42)
+        assert task.task_type == TaskType.MULTI_HOP_RETRIEVAL
+        assert len(task.samples) == 5
+        for sample in task.samples:
+            assert len(sample.memories_to_store) == 3  # 2 chain links + 1 distractor
+            assert sample.query.text
+            assert sample.expected_answer
+            assert len(sample.expected_retrieved_contents) == 2
+
+    def test_multi_hop_retrieval_has_chain_links(self):
+        task = generate_multi_hop_retrieval_task(num_samples=5, seed=42)
+        for sample in task.samples:
+            metadata_types = {m.metadata.get("type") for m in sample.memories_to_store}
+            assert "chain-link-1" in metadata_types
+            assert "chain-link-2" in metadata_types
+            assert "distractor" in metadata_types
+
+    def test_multi_hop_retrieval_reproducibility(self):
+        task1 = generate_multi_hop_retrieval_task(num_samples=5, seed=77)
+        task2 = generate_multi_hop_retrieval_task(num_samples=5, seed=77)
+        for s1, s2 in zip(task1.samples, task2.samples):
+            assert s1.sample_id == s2.sample_id
+            assert s1.expected_answer == s2.expected_answer
+
+    def test_memory_update_generates_samples(self):
+        task = generate_memory_update_task(num_samples=5, seed=42)
+        assert task.task_type == TaskType.MEMORY_UPDATE
+        assert len(task.samples) == 5
+        for sample in task.samples:
+            assert len(sample.memories_to_store) == 2
+            assert sample.query.text
+            assert sample.expected_answer
+            # Should have original and update with different timestamps
+            timestamps = [m.timestamp for m in sample.memories_to_store]
+            assert timestamps[0] < timestamps[1]
+
+    def test_memory_update_has_explicit_update_semantics(self):
+        task = generate_memory_update_task(num_samples=5, seed=42)
+        for sample in task.samples:
+            metadata_types = [m.metadata.get("type") for m in sample.memories_to_store]
+            assert "original" in metadata_types
+            assert "update" in metadata_types
+            # Update entry should have supersedes field
+            update_entry = [m for m in sample.memories_to_store if m.metadata.get("type") == "update"][0]
+            assert update_entry.metadata.get("supersedes") == "original"
+            assert update_entry.metadata.get("version") == 2
+
+    def test_memory_update_reproducibility(self):
+        task1 = generate_memory_update_task(num_samples=5, seed=77)
+        task2 = generate_memory_update_task(num_samples=5, seed=77)
+        for s1, s2 in zip(task1.samples, task2.samples):
+            assert s1.sample_id == s2.sample_id
+            assert s1.expected_answer == s2.expected_answer
+
+    def test_context_window_efficiency_generates_samples(self):
+        task = generate_context_window_efficiency_task(num_samples=4, seed=42)
+        assert task.task_type == TaskType.CONTEXT_WINDOW_EFFICIENCY
+        assert len(task.samples) == 4
+        for sample in task.samples:
+            assert len(sample.memories_to_store) > 1
+            assert sample.query.text
+            assert sample.expected_answer
+            assert "scale" in sample.metadata
+
+    def test_context_window_efficiency_varying_scales(self):
+        task = generate_context_window_efficiency_task(num_samples=4, seed=42)
+        scales = [s.metadata["scale"] for s in task.samples]
+        # With 4 samples, we should see all 4 scale levels (10, 50, 100, 200)
+        assert set(scales) == {10, 50, 100, 200}
+
+    def test_context_window_efficiency_memory_counts(self):
+        task = generate_context_window_efficiency_task(num_samples=4, seed=42)
+        for sample in task.samples:
+            scale = sample.metadata["scale"]
+            # Should have scale fillers + 1 target
+            assert len(sample.memories_to_store) == scale + 1
+
+    def test_context_window_efficiency_reproducibility(self):
+        task1 = generate_context_window_efficiency_task(num_samples=4, seed=77)
+        task2 = generate_context_window_efficiency_task(num_samples=4, seed=77)
         for s1, s2 in zip(task1.samples, task2.samples):
             assert s1.sample_id == s2.sample_id
             assert s1.expected_answer == s2.expected_answer
