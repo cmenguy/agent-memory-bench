@@ -8,7 +8,6 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-from agent_memory_bench.core import BenchmarkRunner
 from agent_memory_bench.models import BenchmarkReport
 
 

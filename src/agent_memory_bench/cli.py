@@ -6,15 +6,15 @@ from pathlib import Path
 
 import click
 
+from agent_memory_bench.adapters.base import MemoryAdapter
 from agent_memory_bench.core import BenchmarkRunner, TASK_GENERATORS
-from agent_memory_bench.models import TaskType
 from agent_memory_bench.runner import print_report, save_report
 
 
 AVAILABLE_TASKS = [t.value for t in TASK_GENERATORS]
 
 
-def _resolve_adapter(name: str):
+def _resolve_adapter(name: str) -> MemoryAdapter:
     """Resolve adapter by name, importing and instantiating it."""
     match name:
         case "mem0":
@@ -107,7 +107,6 @@ def adapters():
 def report(input_file, output):
     """Generate a leaderboard report from a previous benchmark run."""
     import json
-    from agent_memory_bench.models import BenchmarkReport
 
     data = json.loads(Path(input_file).read_text())
     click.echo(f"Leaderboard from {data.get('timestamp', 'unknown')}:\n")
