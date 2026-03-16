@@ -17,3 +17,4 @@ env/
 *.sqlite3
 .DS_Store
 .idea/
+.memos/
