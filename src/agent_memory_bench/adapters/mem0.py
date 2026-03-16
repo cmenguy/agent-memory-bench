@@ -7,7 +7,15 @@ from agent_memory_bench.models import MemoryEntry, Query, RetrievedMemory
 
 
 class Mem0Adapter(MemoryAdapter):
-    """Adapter for Mem0 (https://github.com/mem0ai/mem0)."""
+    """Adapter for Mem0 (https://github.com/mem0ai/mem0).
+
+    Validated against mem0ai>=1.0. SDK API:
+    - ``from mem0 import Memory`` — main entry point
+    - ``Memory(config=...)`` — constructor accepts optional config dict
+    - ``.add(messages, user_id=, metadata=)`` — messages can be str or list of dicts
+    - ``.search(query, user_id=, limit=)`` — returns list of dicts with 'memory'/'score' keys
+    - ``.reset()`` — clears all memories
+    """
 
     def __init__(self, api_key: str | None = None, **kwargs):
         self._client = None
