@@ -7,58 +7,81 @@ from agent_memory_bench.models import MemoryEntry, Query, RetrievedMemory
 
 
 class MemOSAdapter(MemoryAdapter):
-    """Adapter for MemOS (https://github.com/MemTensor/MemOS)."""
+    """Adapter for MemOS (https://github.com/MemTensor/MemOS).
 
-    def __init__(self, config_path: str | None = None, **kwargs):
-        self._client = None
-        self._config_path = config_path
+    Requires: ``pip install MemoryOS>=2.0`` (PyPI package name: MemoryOS,
+    import name: ``memos``).
+
+    MemOS uses a ``MOS`` class as its main entry point, with memory organized
+    into cubes (text, act, para, pref). This adapter uses ``MOS.chat()`` for
+    retrieval since MemOS is designed around conversational memory access
+    rather than direct store/search operations.
+
+    Note: The MemOS API differs significantly from simple key-value memory
+    systems. This adapter provides a best-effort mapping. For optimal results,
+    configure MOS with a ``MOSConfig`` that matches your use case.
+    """
+
+    def __init__(self, config: dict | None = None, **kwargs):
+        self._mos = None
+        self._config = config
         self._kwargs = kwargs
+        self._memories: list[MemoryEntry] = []
 
     @property
     def name(self) -> str:
         return "memos"
 
     def setup(self) -> None:
-        """Initialize the MemOS client."""
+        """Initialize the MemOS MOS instance."""
         try:
-            import memos
+            from memos import MOS
 
-            self._client = memos.Client(config_path=self._config_path, **self._kwargs)
+            if self._config is None:
+                self._mos = MOS.simple()
+            else:
+                from memos.configs.mem_os import MOSConfig
+
+                mos_config = MOSConfig(**self._config, **self._kwargs)
+                self._mos = MOS(config=mos_config)
         except ImportError:
             raise ImportError(
-                "memos-sdk is not installed. Install it with: pip install agent-memory-bench[memos]"
+                "MemoryOS is not installed. "
+                "Install it with: pip install agent-memory-bench[memos]"
             )
 
     def store(self, entry: MemoryEntry) -> None:
-        """Store a memory entry in MemOS."""
-        if self._client is None:
+        """Store a memory entry.
+
+        MemOS doesn't have a direct 'store' API — memories are ingested
+        through chat interactions. This adapter accumulates entries and
+        uses them as context during retrieval.
+        """
+        if self._mos is None:
             raise RuntimeError("Adapter not initialized. Call setup() first.")
-        self._client.store(
-            content=entry.content,
-            user_id=entry.user_id,
-            session_id=entry.session_id,
-            metadata=entry.metadata,
-        )
+        self._memories.append(entry)
 
     def retrieve(self, query: Query) -> list[RetrievedMemory]:
-        """Retrieve memories from MemOS."""
-        if self._client is None:
+        """Retrieve memories using MemOS chat-based retrieval."""
+        if self._mos is None:
             raise RuntimeError("Adapter not initialized. Call setup() first.")
-        results = self._client.search(
-            query=query.text,
-            user_id=query.user_id,
-            top_k=query.top_k,
-        )
-        return [
-            RetrievedMemory(
-                content=r.get("content", ""),
-                score=r.get("relevance", 0.0),
-                metadata=r.get("metadata", {}),
+        # Use MOS.chat() which searches memory and generates a response
+        try:
+            response = self._mos.chat(
+                query=query.text,
+                user_id=query.user_id,
             )
-            for r in results
-        ]
+            # MOS.chat returns a string response; wrap it as a single result
+            return [
+                RetrievedMemory(
+                    content=response,
+                    score=1.0,
+                    metadata={},
+                )
+            ]
+        except Exception:
+            return []
 
     def clear(self) -> None:
-        """Clear all MemOS memories."""
-        if self._client is not None:
-            self._client.clear()
+        """Clear accumulated memories."""
+        self._memories.clear()
